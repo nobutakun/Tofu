@@ -1,18 +1,46 @@
+import { jest, afterAll } from '@jest/globals';
 import { config } from '../config';
-import { app, redisClient } from '../index';
+import { app, redisClient, serverInstance } from '../index';
 import supertest from 'supertest';
+import type { Redis, RedisKey, RedisValue, RedisOptions } from 'ioredis';
+import type { Logger } from 'winston';
 
-// Mock Redis for tests
+type MockFn = jest.Mock<any>;
+
+interface MockRedisClient {
+  on: MockFn;
+  get: MockFn;
+  set: MockFn;
+  quit: MockFn;
+  status: 'ready' | 'connecting' | 'closed';
+  disconnect: MockFn;
+}
+
+// Set environment variables
+process.env.NODE_ENV = 'test';
+process.env.PORT = '3001';
+process.env.HOST = 'localhost';
+process.env.REDIS_HOST = 'localhost';
+process.env.REDIS_PORT = '6379';
+
+// Create mock implementations
+const mockQuit = jest.fn().mockImplementation(() => Promise.resolve());
+const mockGet = jest.fn().mockImplementation(() => Promise.resolve(null));
+const mockSet = jest.fn().mockImplementation(() => Promise.resolve('OK'));
+
+// Mock Redis
+const mockRedis: MockRedisClient = {
+  on: jest.fn(),
+  get: mockGet,
+  set: mockSet,
+  quit: mockQuit,
+  status: 'ready',
+  disconnect: jest.fn()
+};
+
+// Mock Redis module
 jest.mock('ioredis', () => {
-  const Redis = jest.fn(() => ({
-    on: jest.fn(),
-    get: jest.fn(),
-    set: jest.fn(),
-    quit: jest.fn(),
-    status: 'ready',
-    disconnect: jest.fn()
-  }));
-  return Redis;
+  return jest.fn().mockImplementation(() => mockRedis);
 });
 
 // Mock franc module
@@ -21,68 +49,83 @@ jest.mock('franc', () => {
     if (text.includes('日本語')) return 'jpn';
     if (text.includes('한국어')) return 'kor';
     if (text.includes('中文')) return 'cmn';
+    if (!text || text.length < 3) return 'und';
     return 'eng';
   });
 });
 
 // Mock Winston logger
+const mockLogger = {
+  info: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+  child: jest.fn().mockReturnThis()
+};
+
 jest.mock('winston', () => ({
   format: {
     combine: jest.fn(),
     timestamp: jest.fn(),
     json: jest.fn(),
-    simple: jest.fn(),
     colorize: jest.fn(),
-    prettyPrint: jest.fn()
+    simple: jest.fn()
   },
-  createLogger: jest.fn().mockReturnValue({
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-    child: jest.fn().mockReturnThis()
-  }),
+  createLogger: jest.fn().mockReturnValue(mockLogger),
   transports: {
     Console: jest.fn(),
     File: jest.fn()
   }
 }));
 
-// Use a different port for tests
-process.env.PORT = '3001';
+// Silence console output
+const mockConsole = {
+  log: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn()
+};
 
-// Global test setup
-beforeAll(async () => {
-  // Set test environment variables
-  process.env.NODE_ENV = 'test';
-  process.env.HOST = 'localhost';
-  process.env.REDIS_HOST = 'localhost';
-  process.env.REDIS_PORT = '6379';
+Object.assign(console, mockConsole);
 
-  // Silence console during tests
-  global.console = {
-    ...console,
-    log: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn()
-  };
-});
+// Make mocks available globally
+global.__mocks__ = {
+  redis: mockRedis
+};
 
-// Global test teardown
-afterAll(async () => {
+// Cleanup function
+async function cleanup(): Promise<void> {
+  if (serverInstance?.listening) {
+    await new Promise<void>((resolve) => {
+      serverInstance.close(() => resolve());
+    });
+  }
+
   // Clean up Redis connection
-  await redisClient.quit();
-  
-  // Wait for all pending operations to complete
-  await new Promise((resolve) => setTimeout(resolve, 500));
-});
+  if (redisClient) {
+    await Promise.resolve(redisClient.quit());
+  }
 
-// Reset mocks between tests
-afterEach(() => {
+  // Wait for any pending operations
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Reset all mocks
   jest.clearAllMocks();
-  jest.clearAllTimers();
-});
+  jest.resetAllMocks();
+  jest.restoreAllMocks();
+}
 
-// Export for tests
-export { app, supertest, config };
+// Register cleanup
+afterAll(cleanup);
+
+// Export test utilities
+export {
+  app,
+  supertest,
+  config,
+  mockRedis,
+  mockLogger,
+  mockConsole,
+  cleanup
+};

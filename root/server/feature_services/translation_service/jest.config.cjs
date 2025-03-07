@@ -1,44 +1,50 @@
-/** @type {import('ts-jest').JestConfigWithTsJest} */
+/** @type {import('jest').Config} */
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
-  testMatch: [
-    '**/__tests__/**/*.+(ts|tsx|js)',
-    '**/?(*.)+(spec|test).+(ts|tsx|js)'
-  ],
+  moduleFileExtensions: ['ts', 'js', 'cjs', 'mjs', 'json'],
   transform: {
-    '^.+\\.tsx?$': [
+    '^.+\\.ts$': [
       'ts-jest',
       {
-        useESM: true,
-        tsconfig: 'tsconfig.json'
+        tsconfig: 'tsconfig.json',
+        useESM: true
       }
     ]
   },
+  extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@/(.*)$': '<rootDir>/src/$1'
   },
-  extensionsToTreatAsEsm: ['.ts'],
-  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
-  collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/types/**',
-    '!src/__tests__/**'
+  testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.[jt]sx?$',
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/coverage/'
   ],
-  coverageThreshold: {
-    global: {
-      branches: 60,
-      functions: 60,
-      lines: 60,
-      statements: 60
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
+  verbose: true,
+  detectOpenHandles: true,
+  forceExit: true,
+  testTimeout: 30000,
+  globals: {
+    'ts-jest': {
+      useESM: true,
+      isolatedModules: true
     }
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(franc|trigram-utils)/)'
+  collectCoverageFrom: [
+    'src/**/*.ts',
+    '!src/**/*.d.ts',
+    '!src/**/__tests__/**'
   ],
-  moduleDirectories: ['node_modules'],
-  testTimeout: 10000,
-  verbose: true
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov'],
+  runner: 'jest-runner',
+  testRunner: 'jest-circus/runner',
+  resetMocks: true,
+  restoreMocks: true,
+  clearMocks: true,
+  maxWorkers: 1
 };

@@ -1,7 +1,9 @@
-import { jest } from '@jest/globals';
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
 
-// Increase timeout for all tests
-jest.setTimeout(30000);
+// Handle ESM imports in Jest environment
+require('@jest/globals');
 
 // Mock environment variables
 process.env.NODE_ENV = 'test';
@@ -9,19 +11,6 @@ process.env.PORT = '3001';
 process.env.HOST = 'localhost';
 process.env.REDIS_HOST = 'localhost';
 process.env.REDIS_PORT = '6379';
-
-// Handle async operations
-jest.useRealTimers();
-
-// Silence console output during tests
-global.console = {
-  ...console,
-  log: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  info: jest.fn(),
-  debug: jest.fn(),
-};
 
 // Redis mock setup
 const mockRedis = {
@@ -48,19 +37,31 @@ jest.mock('franc', () => {
   });
 });
 
-// Clean up after each test
+// Silence console output during tests
+global.console = {
+  ...console,
+  log: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  debug: jest.fn(),
+};
+
+// Cleanup functions
 afterEach(() => {
   jest.clearAllMocks();
   jest.clearAllTimers();
 });
 
-// Global cleanup
 afterAll(async () => {
   jest.useRealTimers();
   await new Promise(resolve => setTimeout(resolve, 100));
 });
 
-// Make mocks available globally
+// Export mocks for tests
 global.__mocks__ = {
   redis: mockRedis
 };
+
+// Increase timeout for all tests
+jest.setTimeout(30000);
