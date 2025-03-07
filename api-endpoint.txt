@@ -1,0 +1,340 @@
+# Translation Service API Endpoints
+
+## Authentication and Session Management
+
+# Authenticate user/device and establish session
+POST /api/v1/auth/login
+  request:
+    body:
+      application/json:
+        device_id: string
+        auth_token: string
+        device_capabilities: object
+  response:
+    200:
+      body:
+        application/json:
+          session_token: string
+          expires_in: integer
+          supported_languages: array
+
+# Refresh authentication token
+POST /api/v1/auth/refresh
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+  response:
+    200:
+      body:
+        application/json:
+          session_token: string
+          expires_in: integer
+
+# End session
+POST /api/v1/auth/logout
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+  response:
+    204:
+
+## Language Detection
+
+# Detect language from text
+POST /api/v1/language/detect
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        text: string
+        confidence_threshold: float (optional)
+  response:
+    200:
+      body:
+        application/json:
+          detected_language: string
+          confidence: float
+          alternatives: array (optional)
+
+# Get supported languages
+GET /api/v1/language/supported
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    query:
+      device_capabilities: string (optional)
+  response:
+    200:
+      body:
+        application/json:
+          languages: array
+          models: object
+
+## Text Translation
+
+# Translate text
+POST /api/v1/translation/text
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        text: string
+        source_language: string (optional)
+        target_language: string
+        context_id: string (optional)
+        domain: string (optional, e.g., "medical", "technical", "casual")
+        quality_preference: string (optional, e.g., "speed", "accuracy", "balanced")
+        request_id: string (optional, client-generated unique ID)
+  response:
+    200:
+      body:
+        application/json:
+          translated_text: string
+          detected_language: string
+          confidence: float
+          model_used: string
+          processing_time_ms: integer
+          cached: boolean
+          request_id: string (echoed back)
+
+# Batch translate multiple texts
+POST /api/v1/translation/batch
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        texts: array
+        source_language: string (optional)
+        target_language: string
+        context_id: string (optional)
+        domain: string (optional)
+        request_id: string (optional)
+  response:
+    200:
+      body:
+        application/json:
+          translations: array
+          processing_time_ms: integer
+          request_id: string (echoed back)
+
+## Voice Translation
+
+# Start voice translation session
+POST /api/v1/translation/voice/start
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        source_language: string (optional)
+        target_language: string
+        audio_format: string
+        context_id: string (optional)
+        domain: string (optional)
+  response:
+    200:
+      body:
+        application/json:
+          session_id: string
+          websocket_url: string
+          expires_in: integer
+
+# End voice translation session
+POST /api/v1/translation/voice/end
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        session_id: string
+  response:
+    204:
+
+## Context Management
+
+# Create a new translation context
+POST /api/v1/context/create
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        domain: string (optional)
+        participants: array (optional)
+        initial_language_pairs: array (optional)
+  response:
+    200:
+      body:
+        application/json:
+          context_id: string
+          expires_in: integer
+
+# Add to existing context
+POST /api/v1/context/{context_id}/add
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        text: string
+        language: string
+        speaker_id: string (optional)
+        timestamp: string (optional)
+  response:
+    200:
+      body:
+        application/json:
+          success: boolean
+          entries_count: integer
+
+# Get context history
+GET /api/v1/context/{context_id}/history
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    query:
+      limit: integer (optional)
+      offset: integer (optional)
+  response:
+    200:
+      body:
+        application/json:
+          entries: array
+          total_entries: integer
+
+## Device Management & Synchronization
+
+# Register device as leader
+POST /api/v1/device/register-leader
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        device_id: string
+        device_capabilities: object
+        follower_devices: array (optional)
+  response:
+    200:
+      body:
+        application/json:
+          leader_id: string
+          sync_token: string
+
+# Register device as follower
+POST /api/v1/device/register-follower
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        device_id: string
+        leader_id: string
+        sync_token: string
+        device_capabilities: object
+  response:
+    200:
+      body:
+        application/json:
+          follower_id: string
+          confirmed: boolean
+
+# Get translation state
+GET /api/v1/device/state/{leader_id}
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    query:
+      last_sync_id: string (optional)
+  response:
+    200:
+      body:
+        application/json:
+          sync_id: string
+          translations: array
+          contexts: array
+          timestamp: string
+
+## Caching Control
+
+# Preload cache with common phrases
+POST /api/v1/cache/preload
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        source_language: string
+        target_language: string
+        domain: string (optional)
+        size_limit_kb: integer (optional)
+  response:
+    202:
+      body:
+        application/json:
+          job_id: string
+          estimated_phrases: integer
+          estimated_size_kb: integer
+
+# Get cache status
+GET /api/v1/cache/status
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+  response:
+    200:
+      body:
+        application/json:
+          device_cache_size_kb: integer
+          phrases_count: integer
+          hit_rate: float
+          languages: object
+
+# Clear cache
+DELETE /api/v1/cache
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    query:
+      scope: string (optional, e.g., "all", "language_pair")
+      source_language: string (optional)
+      target_language: string (optional)
+  response:
+    204:
+
+## Feedback & Quality
+
+# Submit translation feedback
+POST /api/v1/feedback
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+    body:
+      application/json:
+        translation_id: string
+        rating: integer (1-5)
+        corrected_text: string (optional)
+        comment: string (optional)
+  response:
+    200:
+      body:
+        application/json:
+          feedback_id: string
+          applied: boolean
+
+# Get system status and health
+GET /api/v1/system/health
+  request:
+    headers:
+      Authorization: Bearer {session_token}
+  response:
+    200:
+      body:
+        application/json:
+          status: string
+          models_availability: object
+          current_load: object
+          recommended_settings: object

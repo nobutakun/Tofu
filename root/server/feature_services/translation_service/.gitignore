@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+yarn-error.log
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+
+# Operating System
+.DS_Store
+Thumbs.db

@@ -1,0 +1,38 @@
+{
+  "name": "translation-service",
+  "version": "1.0.0",
+  "description": "Translation service with language detection and caching",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "yarn tsc",
+    "start": "node dist/index.js",
+    "dev": "yarn ts-node-dev --respawn src/index.ts",
+    "test": "jest --config jest.config.cjs --detectOpenHandles",
+    "test:watch": "jest --config jest.config.cjs --watchAll --detectOpenHandles",
+    "test:coverage": "jest --config jest.config.cjs --coverage --detectOpenHandles",
+    "test:simple": "jest --config jest.config.cjs src/__tests__/simple.test.ts --no-cache --detectOpenHandles"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "redis": "^4.6.7",
+    "ioredis": "^5.3.2",
+    "franc": "^6.1.0",
+    "winston": "^3.10.0",
+    "dotenv": "^16.4.7",
+    "express-validator": "^7.0.1",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.17",
+    "@types/jest": "^29.5.3",
+    "@types/node": "^20.4.5",
+    "@types/supertest": "^2.0.12",
+    "@types/winston": "^2.4.4",
+    "typescript": "^5.1.6",
+    "ts-node-dev": "^2.0.0",
+    "jest": "^29.6.2",
+    "ts-jest": "^29.1.1",
+    "supertest": "^6.3.3"
+  }
+}
