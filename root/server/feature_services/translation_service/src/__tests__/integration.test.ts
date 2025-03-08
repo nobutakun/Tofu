@@ -1,6 +1,7 @@
 import { describe, expect, it, jest, beforeAll, afterAll } from '@jest/globals';
 import { app, serverInstance } from '../index';
-import supertest, { SuperTest, Test, Response } from 'supertest';
+import * as supertest from 'supertest';
+import type { SuperTest, Test, Response } from 'supertest';
 import type { DetectionResponse, CustomError, LanguageDetectionResult } from '../types';
 
 // Increase timeout for all tests in this file
@@ -12,7 +13,7 @@ interface ApiErrorResponse {
   type?: string;
 }
 
-const request: SuperTest<Test> = supertest(app);
+const request = supertest.agent(app);
 
 describe('Language Detection API Integration Tests', () => {
   beforeAll(() => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach, jest } from '@jest/globals';
 import type { Config } from 'jest';
 import type { Logger } from 'winston';
-import type { Redis } from 'ioredis';
+import { Redis } from 'ioredis';
 
 describe('Simple Test Suite', () => {
   beforeEach(() => {
@@ -31,23 +31,22 @@ describe('Simple Test Suite', () => {
   });
 
   // Test Redis mock
-  it('should handle Redis mock', async () => {
-    const Redis = (await import('ioredis')).default;
-    const client: Redis = new Redis();
+  it('should handle Redis mock', () => {
+    const client = new Redis();
     expect(client.status).toBe('ready');
-    expect(client.get).toBeInstanceOf(Function);
-    expect(client.set).toBeInstanceOf(Function);
-    expect(client.quit).toBeInstanceOf(Function);
+    expect(typeof client.get).toBe('function');
+    expect(typeof client.set).toBe('function');
+    expect(typeof client.quit).toBe('function');
   });
 
   // Test Winston mock
   it('should handle Winston mock', async () => {
     const winston = await import('winston');
     const logger: Logger = winston.createLogger();
-    expect(logger.info).toBeInstanceOf(Function);
-    expect(logger.error).toBeInstanceOf(Function);
-    expect(logger.warn).toBeInstanceOf(Function);
-    expect(logger.debug).toBeInstanceOf(Function);
+    expect(typeof logger.info).toBe('function');
+    expect(typeof logger.error).toBe('function');
+    expect(typeof logger.warn).toBe('function');
+    expect(typeof logger.debug).toBe('function');
   });
 
   // Test server configuration

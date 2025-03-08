@@ -1,20 +1,12 @@
 import { jest, afterAll } from '@jest/globals';
 import { config } from '../config';
 import { app, redisClient, serverInstance } from '../index';
-import supertest from 'supertest';
-import type { Redis, RedisKey, RedisValue, RedisOptions } from 'ioredis';
+import * as supertest from 'supertest';
+import type { Redis } from 'ioredis';
 import type { Logger } from 'winston';
 
-type MockFn = jest.Mock<any>;
-
-interface MockRedisClient {
-  on: MockFn;
-  get: MockFn;
-  set: MockFn;
-  quit: MockFn;
-  status: 'ready' | 'connecting' | 'closed';
-  disconnect: MockFn;
-}
+type DetectLanguageResult = 'jpn' | 'kor' | 'cmn' | 'und' | 'eng';
+type DetectLanguageFunction = (text: string) => DetectLanguageResult;
 
 // Set environment variables
 process.env.NODE_ENV = 'test';
@@ -23,39 +15,57 @@ process.env.HOST = 'localhost';
 process.env.REDIS_HOST = 'localhost';
 process.env.REDIS_PORT = '6379';
 
-// Create mock implementations
-const mockQuit = jest.fn().mockImplementation(() => Promise.resolve());
-const mockGet = jest.fn().mockImplementation(() => Promise.resolve(null));
-const mockSet = jest.fn().mockImplementation(() => Promise.resolve('OK'));
-
-// Mock Redis
-const mockRedis: MockRedisClient = {
-  on: jest.fn(),
-  get: mockGet,
-  set: mockSet,
-  quit: mockQuit,
-  status: 'ready',
-  disconnect: jest.fn()
+// Create Redis mock base functions
+const redisFunctions = {
+  get: jest.fn().mockImplementation(() => Promise.resolve(null)),
+  set: jest.fn().mockImplementation(() => Promise.resolve('OK')),
+  quit: jest.fn().mockImplementation(() => Promise.resolve()),
+  disconnect: jest.fn(),
+  on: jest.fn()
 };
+
+// Mock Redis implementation
+const mockRedis = {
+  ...redisFunctions,
+  status: 'ready' as const
+};
+
+// Mock Redis class
+const RedisMock = jest.fn().mockImplementation(() => mockRedis);
 
 // Mock Redis module
 jest.mock('ioredis', () => {
-  return jest.fn().mockImplementation(() => mockRedis);
+  const Redis = jest.fn().mockImplementation(() => {
+    return {
+      status: 'ready',
+      get: jest.fn(),
+      set: jest.fn(),
+      quit: jest.fn(),
+      on: jest.fn(),
+      // Add any other Redis methods you need
+    };
+  });
+  
+  return Redis;
 });
+
+// Define detect function with proper type
+const detectLanguage: DetectLanguageFunction = (text) => {
+  if (text.includes('日本語')) return 'jpn';
+  if (text.includes('한국어')) return 'kor';
+  if (text.includes('中文')) return 'cmn';
+  if (!text || text.length < 3) return 'und';
+  return 'eng';
+};
 
 // Mock franc module
-jest.mock('franc', () => {
-  return jest.fn((text: string) => {
-    if (text.includes('日本語')) return 'jpn';
-    if (text.includes('한국어')) return 'kor';
-    if (text.includes('中文')) return 'cmn';
-    if (!text || text.length < 3) return 'und';
-    return 'eng';
-  });
-});
+jest.mock('franc', () => ({
+  __esModule: true,
+  detect: jest.fn(detectLanguage)
+}));
 
 // Mock Winston logger
-const mockLogger = {
+const mockLoggerFunctions = {
   info: jest.fn(),
   error: jest.fn(),
   warn: jest.fn(),
@@ -63,6 +73,9 @@ const mockLogger = {
   child: jest.fn().mockReturnThis()
 };
 
+const mockLogger = mockLoggerFunctions as unknown as Logger;
+
+// Mock Winston module
 jest.mock('winston', () => ({
   format: {
     combine: jest.fn(),
@@ -90,8 +103,16 @@ const mockConsole = {
 Object.assign(console, mockConsole);
 
 // Make mocks available globally
+declare global {
+  var __mocks__: {
+    redis: typeof mockRedis;
+    detectLanguage: DetectLanguageFunction;
+  };
+}
+
 global.__mocks__ = {
-  redis: mockRedis
+  redis: mockRedis,
+  detectLanguage // Export for direct testing if needed
 };
 
 // Cleanup function
@@ -104,13 +125,16 @@ async function cleanup(): Promise<void> {
 
   // Clean up Redis connection
   if (redisClient) {
-    await Promise.resolve(redisClient.quit());
+    try {
+      await redisClient.quit();
+    } catch {
+      // Ignore cleanup errors
+    }
   }
 
   // Wait for any pending operations
   await new Promise(resolve => setTimeout(resolve, 100));
 
-  // Reset all mocks
   jest.clearAllMocks();
   jest.resetAllMocks();
   jest.restoreAllMocks();
@@ -127,5 +151,6 @@ export {
   mockRedis,
   mockLogger,
   mockConsole,
-  cleanup
+  cleanup,
+  detectLanguage
 };

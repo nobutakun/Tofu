@@ -2,28 +2,23 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  moduleFileExtensions: ['ts', 'js', 'cjs', 'mjs', 'json'],
-  transform: {
-    '^.+\\.ts$': [
-      'ts-jest',
-      {
-        tsconfig: 'tsconfig.json',
-        useESM: true
-      }
-    ]
-  },
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
-    '^@/(.*)$': '<rootDir>/src/$1'
   },
+  transform: {
+    '^.+\\.(ts|tsx)$': ['ts-jest', {
+      useESM: true
+    }]
+  },
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.[jt]sx?$',
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
     '/coverage/'
   ],
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
   verbose: true,
   detectOpenHandles: true,
   forceExit: true,
@@ -41,10 +36,8 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
-  runner: 'jest-runner',
-  testRunner: 'jest-circus/runner',
   resetMocks: true,
   restoreMocks: true,
   clearMocks: true,
   maxWorkers: 1
-};
+}

@@ -5,7 +5,7 @@ import {
   LanguageDetectionError,
   LanguageDetectionErrorType
 } from '../types';
-import franc from 'franc';
+import { franc } from 'franc';
 import { Logger } from 'winston';
 
 const LANGUAGE_NAMES: { [key: string]: string } = {
@@ -23,9 +23,20 @@ export class LanguageDetectorImpl implements LanguageDetectionService {
   private readonly DEFAULT_MIN_CONFIDENCE = 0.5;
   private readonly MIN_TEXT_LENGTH = 10;
   private readonly VERY_SHORT_TEXT_LENGTH = 5;
+  private logger: Logger;
 
-  constructor(private logger: Logger) {
-    this.logger = logger.child({ service: 'LanguageDetection' });
+  constructor(logger?: Logger) {
+    if (!logger) {
+      this.logger = {
+        child: () => this.logger,
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {}
+      } as unknown as Logger;
+    } else {
+      this.logger = logger.child({ service: 'LanguageDetection' });
+    }
   }
 
   async detectLanguage(
