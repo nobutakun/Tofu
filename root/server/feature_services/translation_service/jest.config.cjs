@@ -13,7 +13,7 @@ module.exports = {
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
-  testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.[jt]sx?$',
+  testRegex: '(/__tests__/(?!setup).*(\\.|/)(test|spec))\\.[jt]sx?$',
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',

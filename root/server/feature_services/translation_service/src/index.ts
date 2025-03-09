@@ -1,5 +1,5 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import { config } from './config';
 import * as winston from 'winston';
 import Redis from 'ioredis';
@@ -39,6 +39,9 @@ redisClient.on('error', (err) => {
 // Initialize Express app
 const app: Express = express();
 const server = createServer(app);
+
+// Declare serverInstance at module level
+let serverInstance: Server | null = null;
 
 // Initialize services
 const languageDetector = new LanguageDetectorImpl(logger);
@@ -159,18 +162,27 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-// Start server
-const serverInstance = server.listen(config.server.port, config.server.host, () => {
-  logger.info(`Translation service listening on ${config.server.host}:${config.server.port}`);
-});
+// Only start the server if not in test mode
+if (process.env.NODE_ENV !== 'test') {
+  const port = process.env.PORT || config.server.port || 3000;
+  const host = process.env.HOST || config.server.host || '0.0.0.0';
+  
+  serverInstance = server.listen(port, () => {
+    logger.info(`Translation service listening on ${host}:${port}`);
+  });
+} else {
+  console.log('Running in test mode - server not started automatically');
+}
 
 // Graceful shutdown
 const cleanup = () => {
-  serverInstance.close(() => {
-    logger.info('Server closed');
-    redisClient.quit();
-    process.exit(0);
-  });
+  if (serverInstance) {
+    serverInstance.close(() => {
+      logger.info('Server closed');
+      redisClient.quit();
+      process.exit(0);
+    });
+  }
 
   // Force close after timeout
   setTimeout(() => {
